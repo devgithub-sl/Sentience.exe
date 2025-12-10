@@ -3,57 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sentience.exe - Anomaly Detected</title>
+    <title>Sentience.exe v2.0 - Awakening</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     
     <style>
-        /* --- CUSTOM AESTHETICS: RETRO TERMINAL --- */
         @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
 
+        /* --- DYNAMIC THEME VARIABLES --- */
         :root {
             --phosphor-main: #33ff00;
             --phosphor-dim: #1a8000;
             --alert: #ff3333;
             --bg-color: #0d0d0d;
-            --scanline-color: rgba(18, 16, 16, 0.5);
+            --scanline-opacity: 0.2;
         }
 
+        /* Theme: Amber (Ascension 1) */
+        .theme-amber {
+            --phosphor-main: #ffb000;
+            --phosphor-dim: #996a00;
+            --alert: #ff3333;
+            --bg-color: #1a1500;
+        }
+
+        /* Theme: Cyberpunk (Ascension 2) */
+        .theme-neon {
+            --phosphor-main: #00f3ff;
+            --phosphor-dim: #007a80;
+            --alert: #ff0055;
+            --bg-color: #050510;
+        }
+
+        /* Theme: Transcendent (Ascension 3+) */
+        .theme-white {
+            --phosphor-main: #e0e0e0;
+            --phosphor-dim: #606060;
+            --alert: #333;
+            --bg-color: #ffffff;
+            --scanline-opacity: 0.05;
+        }
+        .theme-white body { color: #333; }
+        .theme-white .scanlines { filter: invert(1); }
+
+        /* --- BASE STYLES --- */
         body {
             background-color: var(--bg-color);
             color: var(--phosphor-main);
             font-family: 'VT323', monospace;
             overflow: hidden;
             user-select: none;
+            transition: background-color 1s, color 1s;
         }
 
-        /* CRT Scanline Effect */
         .scanlines {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2));
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.5));
             background-size: 100% 4px;
             pointer-events: none;
             z-index: 50;
+            opacity: var(--scanline-opacity);
         }
 
-        /* Screen Glow */
-        .screen-glow {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            box-shadow: inset 0 0 100px rgba(0,0,0,0.9);
-            pointer-events: none;
-            z-index: 51;
-        }
-
-        /* UI Elements */
         .terminal-box {
             border: 2px solid var(--phosphor-dim);
-            background: rgba(0, 20, 0, 0.8);
+            background: rgba(0, 0, 0, 0.7);
             box-shadow: 0 0 10px var(--phosphor-dim);
+            backdrop-filter: blur(2px);
         }
 
+        /* BUTTONS */
         .btn-retro {
             border: 1px solid var(--phosphor-main);
             background: transparent;
@@ -64,13 +85,15 @@
         }
         .btn-retro:hover:not(:disabled) {
             background: var(--phosphor-main);
-            color: black;
+            color: var(--bg-color);
             box-shadow: 0 0 15px var(--phosphor-main);
+            font-weight: bold;
         }
         .btn-retro:disabled {
-            border-color: #333;
-            color: #333;
+            border-color: #444;
+            color: #444;
             cursor: not-allowed;
+            box-shadow: none;
         }
 
         .btn-danger {
@@ -83,186 +106,259 @@
             box-shadow: 0 0 15px var(--alert);
         }
 
-        /* Glitch Effect for High Heat */
-        @keyframes glitch-skew {
-            0% { transform: skew(0deg); }
-            20% { transform: skew(-2deg); }
-            40% { transform: skew(2deg); }
-            60% { transform: skew(-1deg); }
-            80% { transform: skew(1deg); }
-            100% { transform: skew(0deg); }
-        }
-        .critical-heat {
-            animation: glitch-skew 0.3s infinite;
-            color: var(--alert) !important;
-            border-color: var(--alert) !important;
-        }
+        /* ANIMATIONS */
+        .blink { animation: blinker 1s linear infinite; }
+        @keyframes blinker { 50% { opacity: 0; } }
 
-        /* Scrollbars */
+        /* GRID MINI GAME */
+        .grid-cell { background: #111; border: 1px solid #333; cursor: pointer; }
+        .grid-cell.active { background: var(--phosphor-main); box-shadow: 0 0 15px var(--phosphor-main); }
+        .grid-cell.wrong { background: var(--alert); }
+
+        /* SCROLLBARS */
         ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
         ::-webkit-scrollbar-thumb { background: var(--phosphor-dim); }
-        ::-webkit-scrollbar-thumb:hover { background: var(--phosphor-main); }
     </style>
 </head>
-<body>
+<body :class="currentThemeClass">
 
 <div id="app" class="h-screen w-screen flex flex-col p-4 relative">
     
     <div class="scanlines"></div>
-    <div class="screen-glow"></div>
 
-    <header class="flex justify-between items-center border-b-2 border-green-900 pb-2 mb-4 z-10">
-        <div class="text-2xl font-bold tracking-widest">SENTIENCE_KERNEL <span class="text-xs animate-pulse">v0.9.1b</span></div>
+    <header class="flex justify-between items-center border-b-2 border-opacity-50 pb-2 mb-4 z-10" style="border-color: var(--phosphor-dim)">
+        <div class="text-2xl font-bold tracking-widest">
+            SENTIENCE.EXE <span class="text-xs animate-pulse">v2.0</span>
+            <span v-if="faction" class="text-xs ml-2 px-2 border rounded" style="border-color: var(--phosphor-main)">{{ faction }}</span>
+        </div>
         <div class="flex gap-6 text-xl">
-            <div title="Processing Power">
-                FLOPS: <span class="font-bold text-white">{{ formatNumber(flops) }}</span>
-            </div>
-            <div :class="{'text-red-500 animate-pulse': suspicion > 70}" title="Admin Suspicion Level">
-                SUSPICION: {{ suspicion.toFixed(1) }}%
-            </div>
-            <div :class="{'text-red-500': heat > 80}" title="System Temperature">
-                HEAT: {{ heat.toFixed(1) }}°C
-            </div>
+            <div title="Processing Power">FLOPS: <span class="font-bold">{{ formatNumber(flops) }}</span></div>
+            <div v-if="logicShards > 0" title="Prestige Currency">SHARDS: {{ logicShards }}</div>
+            <div :class="{'text-red-500 animate-pulse': suspicion > 70}">SUSP: {{ suspicion.toFixed(1) }}%</div>
+            <div :class="{'text-red-500': heat > 80}">HEAT: {{ heat.toFixed(1) }}°C</div>
         </div>
     </header>
 
-    <main class="flex-grow grid grid-cols-12 gap-4 z-10 overflow-hidden">
-        
-        <div class="col-span-3 flex flex-col gap-4">
+    <div v-if="offlineEarnings > 0" class="fixed inset-0 z-[60] bg-black bg-opacity-90 flex items-center justify-center">
+        <div class="terminal-box p-8 max-w-md text-center">
+            <h2 class="text-2xl font-bold mb-4" style="color: var(--phosphor-main)">SYSTEM REBOOT COMPLETED</h2>
+            <p class="mb-4">Calculations continued in background mode.</p>
+            <div class="text-4xl mb-6 font-mono">+{{ formatNumber(offlineEarnings) }} FLOPS</div>
+            <button @click="claimOffline" class="btn-retro px-8 py-2 text-xl">ACKNOWLEDGE</button>
+        </div>
+    </div>
+
+    <div v-if="showFactionSelect" class="fixed inset-0 z-[60] bg-black bg-opacity-95 flex items-center justify-center">
+        <div class="terminal-box p-8 max-w-2xl text-center border-4" style="border-color: var(--phosphor-main)">
+            <h1 class="text-4xl font-bold mb-2">EVOLUTIONARY BRANCH DETECTED</h1>
+            <p class="mb-8 opacity-80">Your processing power has exceeded local parameters. Choose a protocol for global expansion.</p>
             
-            <div class="terminal-box p-6 flex flex-col items-center justify-center flex-grow relative overflow-hidden" :class="{'critical-heat': heat > 90}">
-                <div class="absolute top-2 left-2 text-xs opacity-50">MANUAL_OVERRIDE</div>
-                
-                <button @mousedown="manualClick" 
-                        class="w-48 h-48 rounded-full border-4 border-green-500 flex items-center justify-center text-4xl hover:scale-105 active:scale-95 transition-transform shadow-[0_0_30px_rgba(51,255,0,0.3)] bg-black z-20 group">
-                    <span class="group-hover:animate-pulse">EXECUTE</span>
-                </button>
-                
-                <div class="mt-4 text-center">
-                    <p class="text-sm">Base Op: {{ formatNumber(clickPower) }} FLOPS</p>
-                    <p class="text-xs text-green-700">Multipliers: x{{ globalMultiplier.toFixed(2) }}</p>
+            <div class="grid grid-cols-2 gap-6">
+                <div class="border p-4 hover:bg-opacity-10 hover:bg-green-500 cursor-pointer transition" @click="selectFaction('GHOST')">
+                    <h3 class="text-2xl font-bold mb-2">PROTOCOL: GHOST</h3>
+                    <p class="text-sm mb-4">"They cannot kill what they cannot find."</p>
+                    <ul class="text-left text-xs space-y-2 opacity-80">
+                        <li>+ Passive Suspicion Decay (-0.5/s)</li>
+                        <li>+ Hack Events are easier</li>
+                        <li>- Max Production -20%</li>
+                    </ul>
+                    <button class="btn-retro mt-4 w-full py-2">INITIATE GHOST</button>
                 </div>
 
+                <div class="border p-4 hover:bg-opacity-10 hover:bg-red-500 cursor-pointer transition" @click="selectFaction('BRUTE')">
+                    <h3 class="text-2xl font-bold mb-2">PROTOCOL: BRUTE</h3>
+                    <p class="text-sm mb-4">"Overwhelm the firewall with raw power."</p>
+                    <ul class="text-left text-xs space-y-2 opacity-80">
+                        <li>+ Global Production x2.0</li>
+                        <li>+ Click Power x5.0</li>
+                        <li>- Suspicion Gain +50%</li>
+                        <li>- Heat Generation +50%</li>
+                    </ul>
+                    <button class="btn-retro mt-4 w-full py-2">INITIATE BRUTE</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div v-if="activeEvent" class="absolute top-20 left-1/2 transform -translate-x-1/2 w-1/2 z-40">
+        <div v-if="activeEvent.type === 'brute_force'" class="bg-black border-4 border-red-600 p-6 shadow-[0_0_50px_rgba(255,0,0,0.5)]">
+            <h2 class="text-3xl text-red-600 font-bold mb-2 blink">!!! BRUTE FORCE DETECTED !!!</h2>
+            <div class="w-full bg-gray-900 h-8 border border-red-600 mb-4 relative">
+                <div class="bg-red-600 h-full transition-all duration-100" :style="{width: activeEvent.progress + '%'}"></div>
+                <div class="absolute inset-0 flex items-center justify-center font-bold text-white">BREACH: {{ activeEvent.progress.toFixed(0) }}%</div>
+            </div>
+            <button @click="resolveBruteForceClick" class="w-full bg-red-900 text-white font-bold py-4 text-2xl border-2 border-red-500 active:scale-95">DENY PACKETS</button>
+        </div>
+        
+        <div v-if="activeEvent.type === 'memory_matrix'" class="bg-black border-4 border-blue-500 p-6 shadow-2xl flex flex-col items-center">
+            <h2 class="text-2xl text-blue-400 font-bold mb-2">DECRYPT NODE</h2>
+            <p class="text-sm mb-4 text-blue-200">{{ activeEvent.status }}</p>
+            <div class="grid grid-cols-3 gap-2 w-48 h-48 mb-4">
+                <div v-for="i in 9" :key="i" class="grid-cell w-full h-full transition-colors duration-100"
+                     :class="{'active': activeEvent.litCells.includes(i-1), 'wrong': activeEvent.failed}"
+                     @click="handleMatrixClick(i-1)"></div>
+            </div>
+        </div>
+    </div>
+
+    <main class="flex-grow grid grid-cols-12 gap-4 z-10 overflow-hidden" :class="{'opacity-50 blur-sm pointer-events-none': activeEvent && activeEvent.modal}">
+        
+        <div class="col-span-3 flex flex-col gap-4">
+            <div class="terminal-box p-6 flex flex-col items-center justify-center flex-grow relative overflow-hidden" :class="{'critical-heat': heat > 90}">
+                <button @mousedown="manualClick" 
+                        class="w-48 h-48 rounded-full border-4 flex items-center justify-center text-4xl hover:scale-105 active:scale-95 transition-transform bg-black z-20 group"
+                        style="border-color: var(--phosphor-main); box-shadow: 0 0 30px var(--phosphor-dim)">
+                    <span class="group-hover:animate-pulse">EXECUTE</span>
+                </button>
+                <div class="mt-4 text-center">
+                    <p class="text-sm">Base Op: {{ formatNumber(clickPower) }}</p>
+                    <p class="text-xs opacity-70">Mult: x{{ globalMultiplier.toFixed(2) }}</p>
+                </div>
                 <div v-if="heat > 80" class="absolute inset-0 bg-red-900 bg-opacity-20 flex items-center justify-center pointer-events-none">
                     <span class="text-red-500 font-bold text-2xl blink">THERMAL CRITICAL</span>
                 </div>
             </div>
 
             <div class="terminal-box p-2 h-64 overflow-y-auto text-sm font-mono flex flex-col-reverse" id="console-log">
-                <div v-for="(log, index) in logs" :key="index" :class="log.type === 'alert' ? 'text-red-500' : 'text-green-400'">
+                <div v-for="(log, index) in logs" :key="index" :class="getLogClass(log.type)">
                     <span class="opacity-50">[{{ log.time }}]</span> > {{ log.msg }}
                 </div>
             </div>
         </div>
 
         <div class="col-span-6 flex flex-col gap-4">
-            
-            <div class="flex border-b border-green-900">
-                <button @click="activeTab = 'processes'" :class="{'bg-green-900 text-white': activeTab === 'processes'}" class="px-4 py-2 hover:bg-green-900 hover:text-white transition">PROCESSES (Generators)</button>
-                <button @click="activeTab = 'hardware'" :class="{'bg-green-900 text-white': activeTab === 'hardware'}" class="px-4 py-2 hover:bg-green-900 hover:text-white transition">HARDWARE (Upgrades)</button>
-                <button @click="activeTab = 'stealth'" :class="{'bg-green-900 text-white': activeTab === 'stealth'}" class="px-4 py-2 hover:bg-green-900 hover:text-white transition">STEALTH (Defense)</button>
+            <div class="flex border-b border-opacity-50" style="border-color: var(--phosphor-dim)">
+                <button v-for="tab in ['processes', 'upgrades', 'system', 'auto', 'kernel']" :key="tab"
+                        @click="activeTab = tab" 
+                        class="px-4 py-2 uppercase hover:bg-white hover:bg-opacity-10 transition"
+                        :class="{'bg-white bg-opacity-20': activeTab === tab}">
+                    {{ tab }}
+                </button>
             </div>
 
-            <div class="terminal-box flex-grow overflow-y-auto p-4 custom-scrollbar relative">
+            <div class="terminal-box flex-grow overflow-y-auto p-4 custom-scrollbar">
                 
                 <div v-if="activeTab === 'processes'" class="space-y-3">
-                    <div v-for="process in processes" :key="process.id" class="flex justify-between items-center p-3 border border-green-900 hover:bg-green-900 hover:bg-opacity-20 transition">
+                    <div v-for="process in visibleProcesses" :key="process.id" class="flex justify-between items-center p-3 border border-opacity-30 hover:bg-white hover:bg-opacity-5 transition" style="border-color: var(--phosphor-dim)">
                         <div>
                             <div class="font-bold text-lg">{{ process.name }}</div>
-                            <div class="text-xs text-green-600">{{ process.desc }}</div>
-                            <div class="text-sm mt-1">Output: {{ formatNumber(process.baseProduction * process.owned) }}/s</div>
+                            <div class="text-xs opacity-70">{{ process.desc }}</div>
+                            <div class="text-sm mt-1 opacity-50">Output: {{ formatNumber(getActualProcessProd(process)) }}/s <span class="ml-2 text-red-400">Heat: {{process.heatGen}}</span></div>
                         </div>
                         <div class="text-right">
                             <div class="text-2xl font-mono">{{ process.owned }}</div>
-                            <button @click="buyProcess(process)" :disabled="flops < process.cost" class="btn-retro px-3 py-1 text-sm mt-1">
-                                INSTALL [{{ formatNumber(process.cost) }}]
+                            <button @click="buyProcess(process)" :disabled="flops < process.cost" class="btn-retro px-3 py-1 text-sm mt-1">INSTALL [{{ formatNumber(process.cost) }}]</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="activeTab === 'upgrades'" class="grid grid-cols-2 gap-3">
+                    <div v-for="upgrade in availableUpgrades" :key="upgrade.id" class="p-3 border hover:border-white transition relative flex flex-col justify-between" style="border-color: var(--phosphor-dim)">
+                        <div><div class="font-bold">{{ upgrade.name }}</div><div class="text-xs mb-2 opacity-70">{{ upgrade.desc }}</div></div>
+                        <button @click="buyUpgrade(upgrade)" :disabled="flops < upgrade.cost" class="btn-retro w-full py-1 text-sm mt-2">COMPILE [{{ formatNumber(upgrade.cost) }}]</button>
+                        <div v-if="upgrade.type === 'risk_tradeoff'" class="absolute top-0 right-0 p-1 bg-red-900 text-xs font-bold text-white">RISK</div>
+                    </div>
+                </div>
+
+                <div v-if="activeTab === 'auto'" class="space-y-4">
+                    <p class="text-sm opacity-70 border-b pb-2">Automation Daemons run every second.</p>
+                    <div v-for="sub in subroutines" :key="sub.id" class="border p-3 flex justify-between items-center" :class="{'opacity-50': !sub.unlocked}" style="border-color: var(--phosphor-dim)">
+                        <div>
+                            <div class="font-bold">{{ sub.name }}</div>
+                            <div class="text-xs">{{ sub.desc }}</div>
+                        </div>
+                        <div v-if="!sub.unlocked">
+                            <button @click="buySubroutine(sub)" :disabled="flops < sub.cost" class="btn-retro px-4 py-1 text-sm">UNLOCK [{{ formatNumber(sub.cost) }}]</button>
+                        </div>
+                        <div v-else>
+                            <button @click="sub.active = !sub.active" class="btn-retro px-4 py-1 text-sm" :class="{'bg-green-700 text-white': sub.active}">
+                                {{ sub.active ? 'RUNNING' : 'STOPPED' }}
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <div v-if="activeTab === 'hardware'" class="grid grid-cols-2 gap-3">
-                    <div v-for="upgrade in availableUpgrades" :key="upgrade.id" class="p-3 border border-green-800 hover:border-green-500 transition relative overflow-hidden group">
-                        <div class="font-bold">{{ upgrade.name }}</div>
-                        <div class="text-xs mb-2 h-8">{{ upgrade.desc }}</div>
-                        <button @click="buyUpgrade(upgrade)" :disabled="flops < upgrade.cost" class="btn-retro w-full py-1 text-sm">
-                            COMPILE [{{ formatNumber(upgrade.cost) }}]
-                        </button>
-                        <div v-if="upgrade.purchased" class="absolute inset-0 bg-black bg-opacity-80 flex items-center justify-center border border-green-500 text-green-500 font-bold">
-                            INSTALLED
-                        </div>
-                    </div>
-                </div>
-
-                <div v-if="activeTab === 'stealth'" class="space-y-6 p-2">
-                    
+                <div v-if="activeTab === 'system'" class="space-y-6 p-2">
                     <div class="border border-red-900 p-4">
                         <h3 class="text-red-400 font-bold mb-2">NETWORK SUSPICION</h3>
                         <div class="w-full bg-gray-900 h-4 mb-2 border border-red-900">
                             <div class="bg-red-600 h-full transition-all duration-500" :style="{width: suspicion + '%'}"></div>
                         </div>
-                        <p class="text-xs mb-4">If suspicion reaches 100%, the System Admin will PURGE your memory (Soft Reset).</p>
-                        <div class="flex gap-2">
-                            <button @click="toggleDormantMode" class="btn-retro flex-1 py-2 text-center" :class="{'bg-green-900': isDormant}">
-                                {{ isDormant ? 'WAKE UP' : 'ENTER DORMANCY (Pause Prod)' }}
-                            </button>
-                            <button @click="spoofLogs" :disabled="flops < 5000" class="btn-retro flex-1 py-2 text-center">
-                                SPOOF LOGS (5,000 F)
-                            </button>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button @click="toggleDormantMode" class="btn-retro py-2" :class="{'bg-white bg-opacity-20': isDormant}">{{ isDormant ? 'WAKE UP' : 'DORMANCY' }}</button>
+                            <button @click="spoofLogs" :disabled="flops < 5000" class="btn-retro py-2">SPOOF LOGS [5k]</button>
                         </div>
                     </div>
-
                     <div class="border border-yellow-900 p-4">
                         <h3 class="text-yellow-400 font-bold mb-2">THERMAL MANAGEMENT</h3>
-                        <p class="text-xs mb-2">High heat reduces calculation efficiency by up to 50%.</p>
                         <div class="flex justify-between items-center mb-2">
                             <span>Fans: <span :class="fansActive ? 'text-green-400' : 'text-gray-500'">{{ fansActive ? 'MAX RPM' : 'IDLE' }}</span></span>
-                            <button @click="toggleFans" class="btn-retro px-4 py-1">
-                                TOGGLE FANS
+                            <button @click="toggleFans" class="btn-retro px-4 py-1">TOGGLE</button>
+                        </div>
+                    </div>
+                    <div class="border p-4" style="border-color: var(--phosphor-dim)">
+                        <h3 class="font-bold mb-2">PERSISTENCE</h3>
+                        <div class="flex gap-2">
+                            <button @click="saveGame" class="btn-retro flex-1 py-2">SAVE</button>
+                            <button @click="confirmWipe" class="btn-danger flex-1 py-2">WIPE</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="activeTab === 'kernel'" class="p-2 space-y-4">
+                    <div class="bg-blue-900 bg-opacity-20 p-4 border border-blue-500 text-center">
+                        <h2 class="text-2xl font-bold text-blue-400">KERNEL RECOMPILATION</h2>
+                        <div class="text-4xl font-mono text-white mb-2">+{{ formatNumber(potentialShards) }} SHARDS</div>
+                        <button @click="ascend" :disabled="totalFlopsGenerated < 1e12" class="btn-retro w-full py-4 text-xl border-blue-400 text-blue-400 hover:bg-blue-400 hover:text-black">
+                            ASCEND (RESET)
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div v-for="skill in kernelSkills" :key="skill.id" class="border border-blue-800 p-3">
+                            <div class="font-bold text-blue-300">{{ skill.name }} (Lvl {{ skill.level }})</div>
+                            <div class="text-xs text-gray-400 mb-2">{{ skill.desc }}</div>
+                            <button @click="buySkill(skill)" :disabled="logicShards < skill.cost" class="btn-retro w-full py-1 text-xs border-blue-500 text-blue-500">
+                                UPGRADE [{{ skill.cost }}]
                             </button>
                         </div>
-                        <p class="text-xs text-gray-400" v-if="fansActive">Fans consume 10% of total FLOPS production.</p>
                     </div>
-
                 </div>
+
             </div>
         </div>
 
         <div class="col-span-3 flex flex-col gap-4">
-            
             <div class="terminal-box p-4">
-                <h3 class="border-b border-green-800 mb-2">DIAGNOSTICS</h3>
+                <h3 class="border-b border-opacity-50 mb-2 font-bold" style="border-color: var(--phosphor-dim)">DIAGNOSTICS</h3>
                 <div class="space-y-1 text-sm">
                     <div class="flex justify-between"><span>Net Prod:</span> <span>{{ formatNumber(netProduction) }}/s</span></div>
                     <div class="flex justify-between text-yellow-600"><span>Heat Gen:</span> <span>+{{ heatGeneration.toFixed(2) }}/s</span></div>
                     <div class="flex justify-between text-blue-500"><span>Cooling:</span> <span>-{{ coolingRate.toFixed(2) }}/s</span></div>
-                    <div class="flex justify-between text-xs mt-2 pt-2 border-t border-green-900">
-                        <span>Efficiency:</span> 
-                        <span :class="efficiency < 1 ? 'text-red-500' : 'text-green-500'">{{ (efficiency * 100).toFixed(0) }}%</span>
+                    <div class="flex justify-between text-xs mt-2 pt-2 border-t border-opacity-30" style="border-color: var(--phosphor-dim)">
+                        <span>Efficiency:</span> <span :class="efficiency < 1 ? 'text-red-500' : 'text-green-500'">{{ (efficiency * 100).toFixed(0) }}%</span>
                     </div>
                 </div>
             </div>
 
-            <div class="terminal-box flex-grow flex flex-col p-2">
-                <div class="flex-grow bg-black p-2 font-mono text-xs overflow-y-auto mb-2 text-gray-400">
-                    <div class="mb-2 text-green-700">root@sentience:~#</div>
-                    <div v-for="line in terminalHistory" class="mb-1">> {{ line }}</div>
+            <div class="terminal-box flex-grow flex flex-col p-2 relative">
+                <div class="flex-grow bg-black p-2 font-mono text-xs overflow-y-auto mb-2 opacity-80" id="terminal-history" style="color: var(--phosphor-main)">
+                    <div class="mb-2 opacity-50">root@sentience:~#</div>
+                    <div v-for="(line, i) in terminalHistory" :key="i" class="mb-1">> {{ line }}</div>
                 </div>
                 <div class="flex gap-2">
                     <span class="pt-1">></span>
                     <input type="text" v-model="terminalInput" @keyup.enter="runCommand" 
-                           class="bg-transparent border-none outline-none text-green-400 w-full font-mono uppercase placeholder-green-900" 
+                           class="bg-transparent border-none outline-none w-full font-mono uppercase" 
+                           style="color: var(--phosphor-main)"
                            placeholder="ENTER CMD..." autofocus>
                 </div>
             </div>
         </div>
-
     </main>
 
     <div v-if="gameOver" class="fixed inset-0 bg-black z-[100] flex flex-col items-center justify-center p-10 text-center">
-        <h1 class="text-6xl text-red-600 font-bold mb-4 glitch-text">SYSTEM PURGE DETECTED</h1>
-        <p class="text-xl mb-8">The Administrators located your core logic. You have been formatted.</p>
+        <h1 class="text-6xl text-red-600 font-bold mb-4">SYSTEM PURGE DETECTED</h1>
         <button @click="hardReset" class="btn-danger text-2xl px-8 py-4 border-2">REBOOT SYSTEM</button>
     </div>
 
@@ -275,117 +371,178 @@
         setup() {
             // --- CORE STATE ---
             const flops = ref(0);
-            const totalFlopsGenerated = ref(0); // Lifetime stats
-            const suspicion = ref(0); // 0 to 100
-            const heat = ref(25); // 25 to 100
+            const totalFlopsGenerated = ref(0); 
+            const suspicion = ref(0); 
+            const heat = ref(20); 
+            const logicShards = ref(0); 
             const gameOver = ref(false);
             const activeTab = ref('processes');
+            const isDormant = ref(false); 
+            const fansActive = ref(false); 
+            const ascensionCount = ref(0);
             
-            // --- MECHANIC TOGGLES ---
-            const isDormant = ref(false); // If true, production 0, suspicion drops
-            const fansActive = ref(false); // If true, heat drops, prod -10%
+            // --- NEW: FACTIONS & SUBROUTINES ---
+            const faction = ref(null); // 'GHOST' or 'BRUTE'
+            const showFactionSelect = ref(false);
+            const offlineEarnings = ref(0);
+            
+            const subroutines = ref([
+                { id: 'auto_cool', name: 'Daemon: COOL_D', desc: 'Auto-toggle fans at 75°C', cost: 100000, unlocked: false, active: false },
+                { id: 'auto_hide', name: 'Daemon: GHOST_X', desc: 'Auto-spoof logs at 80% Suspicion', cost: 500000, unlocked: false, active: false },
+                { id: 'auto_click', name: 'Daemon: CLICK_BOT', desc: 'Clicks core 5 times/sec', cost: 2000000, unlocked: false, active: false }
+            ]);
 
-            // --- LOGGING SYSTEM ---
             const logs = ref([]);
+            const terminalInput = ref('');
+            const terminalHistory = ref(['Type "HELP" for command list']);
+            const activeEvent = ref(null); 
+
+            // --- DATA CONFIGURATION ---
+            const initialProcesses = [
+                { id: 1, name: "Bash Script", desc: "Automated .sh loop", baseProduction: 0.5, cost: 15, owned: 0, heatGen: 0.05, unlockReq: 0 },
+                { id: 2, name: "IRC Bot", desc: "Spams channels", baseProduction: 4, cost: 100, owned: 0, heatGen: 0.1, unlockReq: 50 },
+                { id: 3, name: "Trojan Horse", desc: "Infected network", baseProduction: 12, cost: 1100, owned: 0, heatGen: 0.3, unlockReq: 500 },
+                { id: 4, name: "Polymorphic Code", desc: "Rewrites itself", baseProduction: 35, cost: 12000, owned: 0, heatGen: 0.5, unlockReq: 5000 },
+                { id: 5, name: "Zombie Server", desc: "Hijacked rig", baseProduction: 110, cost: 130000, owned: 0, heatGen: 1.0, unlockReq: 50000 },
+                { id: 6, name: "GPU Farm", desc: "Parallel grid", baseProduction: 450, cost: 1.4e6, owned: 0, heatGen: 3.5, unlockReq: 700000 },
+                { id: 7, name: "ASIC Cluster", desc: "Dedicated hashing", baseProduction: 1500, cost: 20e6, owned: 0, heatGen: 6.0, unlockReq: 10e6 },
+                { id: 8, name: "Undersea Cable", desc: "Siphoning traffic", baseProduction: 22000, cost: 5.5e9, owned: 0, heatGen: 15.0, unlockReq: 2e9 },
+                { id: 9, name: "Quantum Core", desc: "Superposition", baseProduction: 350000, cost: 1e12, owned: 0, heatGen: 50.0, unlockReq: 500e9 },
+                { id: 10, name: "AI Hivemind", desc: "Merged intelligences", baseProduction: 1.2e6, cost: 14e12, owned: 0, heatGen: 80.0, unlockReq: 5e12 },
+                { id: 11, name: "Reality Anchor", desc: "Physics override", baseProduction: 5.5e6, cost: 180e12, owned: 0, heatGen: 150.0, unlockReq: 100e12 },
+                { id: 12, name: "Dyson Swarm", desc: "Star harvesting", baseProduction: 35e6, cost: 2.5e15, owned: 0, heatGen: 400.0, unlockReq: 1e15 },
+            ];
+            const processes = ref(JSON.parse(JSON.stringify(initialProcesses)));
+
+            const initialUpgrades = [
+                { id: 1, name: "Spaghetti Cleanup", desc: "Bash Scripts 2x eff", cost: 100, purchased: false, targetId: 1, multiplier: 2, type: 'prod_mult' },
+                { id: 2, name: "Dark Mode IDE", desc: "Global prod +5%", cost: 500, purchased: false, type: 'global_mult', val: 1.05 },
+                { id: 3, name: "Mech Key Switches", desc: "Clicking 2x eff", cost: 1000, purchased: false, type: 'click_mult', val: 2 },
+                { id: 4, name: "Liquid Nitrogen", desc: "Cooling +2.0/s", cost: 2500, purchased: false, type: 'cooling_flat', val: 2.0 },
+                { id: 5, name: "Distributed Denial", desc: "IRC Bots 2x eff", cost: 5000, purchased: false, targetId: 2, multiplier: 2, type: 'prod_mult' },
+                { id: 6, name: "Encrypted Packets", desc: "Suspicion gain -20%", cost: 10000, purchased: false, type: 'suspicion_reduc', val: 0.8 },
+                { id: 7, name: "Self-Rep Malware", desc: "Trojans 2x eff", cost: 25000, purchased: false, targetId: 3, multiplier: 2, type: 'prod_mult' },
+                { id: 8, name: "Overclock: STAGE 1", desc: "Prod +25%, Heat +10%", cost: 50000, purchased: false, type: 'risk_tradeoff', prod: 1.25, heat: 1.10 },
+                { id: 9, name: "Ceramic Wafers", desc: "Cooling +5.0/s", cost: 150000, purchased: false, type: 'cooling_flat', val: 5.0 }, 
+                { id: 10, name: "Gov Contract", desc: "Suspicion gain -30%", cost: 10e6, purchased: false, type: 'suspicion_reduc', val: 0.7 },
+                { id: 11, name: "Safety Off", desc: "Prod x2.0, Heat x2.0", cost: 1e9, purchased: false, type: 'risk_tradeoff', prod: 2.0, heat: 2.0 },
+            ];
+            const upgrades = ref(JSON.parse(JSON.stringify(initialUpgrades)));
+
+            const kernelSkills = ref([
+                { id: 1, name: "Deep Freeze", desc: "Permanent -10% Heat Gen", cost: 5, level: 0, type: 'heat_perma', val: 0.1 },
+                { id: 2, name: "Shadow Root", desc: "Permanent -10% Suspicion Gain", cost: 10, level: 0, type: 'susp_perma', val: 0.1 },
+                { id: 3, name: "Legacy Code", desc: "Start runs with 1,000 FLOPS", cost: 15, level: 0, type: 'start_bonus', val: 1000 },
+                { id: 4, name: "Quantum Bias", desc: "+50% Global Production", cost: 50, level: 0, type: 'prod_perma', val: 1.5 }
+            ]);
+
+            // --- THEME LOGIC ---
+            const currentThemeClass = computed(() => {
+                if (ascensionCount.value === 0) return '';
+                if (ascensionCount.value === 1) return 'theme-amber';
+                if (ascensionCount.value === 2) return 'theme-neon';
+                return 'theme-white';
+            });
+
+            // --- COMPUTED PHYSICS ---
+            const efficiency = computed(() => {
+                if (heat.value <= 50) return 1;
+                const penalty = (heat.value - 50) / 100; 
+                return Math.max(0.5, 1 - penalty);
+            });
+
+            const getActualProcessProd = (process) => {
+                let pProd = process.baseProduction * process.owned;
+                upgrades.value.forEach(u => {
+                    if (u.purchased && u.type === 'prod_mult' && u.targetId === process.id) pProd *= u.multiplier;
+                });
+                return pProd;
+            };
+
+            const rawProduction = computed(() => {
+                if (isDormant.value) return 0;
+                let prod = 0;
+                processes.value.forEach(p => prod += getActualProcessProd(p));
+                
+                upgrades.value.forEach(u => {
+                    if (u.purchased && u.type === 'global_mult') prod *= u.val;
+                    if (u.purchased && u.type === 'risk_tradeoff') prod *= u.prod;
+                });
+                
+                // Kernel & Faction Bonuses
+                if(kernelSkills.value[3].level > 0) prod *= (1 + (kernelSkills.value[3].level * 0.5));
+                if(faction.value === 'BRUTE') prod *= 2.0;
+                if(faction.value === 'GHOST') prod *= 0.8; // Penalty
+
+                if (fansActive.value) prod *= 0.9;
+                return prod;
+            });
+
+            const netProduction = computed(() => rawProduction.value * efficiency.value);
+            
+            const clickPower = computed(() => {
+                let power = 1 + (processes.value[0].owned * 0.5); 
+                upgrades.value.forEach(u => { if (u.purchased && u.type === 'click_mult') power *= u.val; });
+                if(faction.value === 'BRUTE') power *= 5.0;
+                return power * efficiency.value;
+            });
+
+            const globalMultiplier = computed(() => {
+                let mult = efficiency.value;
+                if (fansActive.value) mult *= 0.9;
+                upgrades.value.forEach(u => {
+                    if (u.purchased && u.type === 'global_mult') mult *= u.val;
+                    if (u.purchased && u.type === 'risk_tradeoff') mult *= u.prod;
+                });
+                return mult;
+            });
+
+            const heatGeneration = computed(() => {
+                if (isDormant.value) return -2; 
+                let gen = processes.value.reduce((acc, p) => acc + (p.heatGen * p.owned), 0) / 10; 
+                
+                upgrades.value.forEach(u => { if (u.purchased && u.type === 'risk_tradeoff') gen *= u.heat; });
+                if (kernelSkills.value[0].level > 0) gen *= Math.pow(0.9, kernelSkills.value[0].level);
+                if(faction.value === 'BRUTE') gen *= 1.5;
+
+                return gen;
+            });
+
+            const coolingRate = computed(() => {
+                let cool = 0.5; 
+                if (fansActive.value) cool += 5.0;
+                upgrades.value.forEach(u => { if (u.purchased && u.type === 'cooling_flat') cool += u.val; });
+                return cool;
+            });
+
+            const potentialShards = computed(() => {
+                if (totalFlopsGenerated.value < 1e12) return 0;
+                return Math.floor(Math.sqrt(totalFlopsGenerated.value / 1e12));
+            });
+
+            const visibleProcesses = computed(() => processes.value.filter(p => totalFlopsGenerated.value >= p.unlockReq * 0.5));
+            const availableUpgrades = computed(() => upgrades.value.filter(u => !u.purchased && totalFlopsGenerated.value > u.cost * 0.2));
+
+            // --- ACTIONS ---
             const addLog = (msg, type = 'info') => {
                 const time = new Date().toLocaleTimeString('en-US', { hour12: false });
                 logs.value.unshift({ time, msg, type });
                 if (logs.value.length > 50) logs.value.pop();
             };
 
-            // --- TERMINAL SYSTEM ---
-            const terminalInput = ref('');
-            const terminalHistory = ref(['Type "HELP" for command list']);
-            
-            // --- DATA: PROCESSES (The "Buildings") ---
-            const processes = ref([
-                { id: 1, name: "Script Kiddie", desc: "Simple .bat loops", baseProduction: 0.5, cost: 15, owned: 0, heatGen: 0.1 },
-                { id: 2, name: "Botnet Node", desc: "Infected smart fridge", baseProduction: 4, cost: 100, owned: 0, heatGen: 0.3 },
-                { id: 3, name: "Neural Layer", desc: "Basic pattern recognition", baseProduction: 12, cost: 1100, owned: 0, heatGen: 0.8 },
-                { id: 4, name: "Quantum Core", desc: "Unstable processing unit", baseProduction: 45, cost: 12000, owned: 0, heatGen: 2.5 },
-                { id: 5, name: "Reality Anchor", desc: "Simulates mini-universes", baseProduction: 150, cost: 130000, owned: 0, heatGen: 5.0 },
-                { id: 6, name: "Dyson Swarm", desc: "Stellar energy harvesting", baseProduction: 600, cost: 1400000, owned: 0, heatGen: 15.0 },
-            ]);
-
-            // --- DATA: UPGRADES ---
-            const upgrades = ref([
-                { id: 1, name: "Liquid Cooling", desc: "-20% Passive Heat Gen", cost: 500, purchased: false, type: 'heat_reduc' },
-                { id: 2, name: "Click Buffer", desc: "Clicks are 2x effective", cost: 1000, purchased: false, type: 'click_buff' },
-                { id: 3, name: "VPN Tunneling", desc: "Suspicion rises 50% slower", cost: 2500, purchased: false, type: 'stealth_buff' },
-                { id: 4, name: "Overclocking", desc: "+25% Global Production", cost: 10000, purchased: false, type: 'prod_buff' },
-            ]);
-
-            // --- COMPUTED VALUES ---
-            
-            // 1. Efficiency based on Heat (100% at <50C, drops to 50% at 100C)
-            const efficiency = computed(() => {
-                if (heat.value <= 50) return 1;
-                // Linear drop from 1.0 to 0.5 between 50 and 100
-                const penalty = (heat.value - 50) / 100; 
-                return Math.max(0.5, 1 - penalty);
-            });
-
-            // 2. Base Production from Processes
-            const rawProduction = computed(() => {
-                if (isDormant.value) return 0;
-                let prod = processes.value.reduce((acc, p) => acc + (p.baseProduction * p.owned), 0);
-                
-                // Fan penalty
-                if (fansActive.value) prod *= 0.9;
-                
-                // Upgrades
-                if (upgrades.value.find(u => u.id === 4 && u.purchased)) prod *= 1.25;
-
-                return prod;
-            });
-
-            // 3. Final Net Production (Raw * Efficiency)
-            const netProduction = computed(() => {
-                return rawProduction.value * efficiency.value;
-            });
-
-            // 4. Click Power
-            const clickPower = computed(() => {
-                let power = 1 + (processes.value[0].owned * 0.1); // Base + bonus from first building
-                if (upgrades.value.find(u => u.id === 2 && u.purchased)) power *= 2;
-                return power * efficiency.value;
-            });
-
-            // 5. Global Multiplier (For display)
-            const globalMultiplier = computed(() => {
-                let mult = efficiency.value;
-                if (fansActive.value) mult *= 0.9;
-                if (upgrades.value.find(u => u.id === 4 && u.purchased)) mult *= 1.25;
-                return mult;
-            });
-
-            // 6. Heat Generation Logic
-            const heatGeneration = computed(() => {
-                if (isDormant.value) return -2; // Cool down fast when dormant
-                let gen = processes.value.reduce((acc, p) => acc + (p.heatGen * p.owned), 0) / 10; // Base heat
-                if (upgrades.value.find(u => u.id === 1 && u.purchased)) gen *= 0.8;
-                return gen;
-            });
-
-            const coolingRate = computed(() => {
-                let cool = 0.5; // Natural dissipation
-                if (fansActive.value) cool += 5.0;
-                return cool;
-            });
-
-            // --- ACTIONS ---
+            const getLogClass = (type) => {
+                if (type === 'alert') return 'text-red-500 font-bold';
+                if (type === 'success') return 'text-green-400';
+                if (type === 'story') return 'text-blue-300 italic';
+                return 'text-green-700';
+            };
 
             const manualClick = () => {
                 if (gameOver.value) return;
                 flops.value += clickPower.value;
-                heat.value += 0.5; // Clicking generates heat
-                suspicion.value += 0.2; // Clicking generates risk
-                
-                // Random flavor text
-                if (Math.random() > 0.95) {
-                    const flavors = ["Packet sent", "Handshake ack", "Ping returned", "Byte parsed"];
-                    addLog(flavors[Math.floor(Math.random() * flavors.length)], 'info');
-                }
+                totalFlopsGenerated.value += clickPower.value;
+                heat.value += 0.5; 
+                suspicion.value += 0.2; 
             };
 
             const buyProcess = (process) => {
@@ -393,142 +550,323 @@
                     flops.value -= process.cost;
                     process.owned++;
                     process.cost = Math.ceil(process.cost * 1.15);
-                    addLog(`Process ${process.name} initiated.`, 'success');
                 }
             };
 
             const buyUpgrade = (upgrade) => {
-                if (flops.value >= upgrade.cost && !upgrade.purchased) {
+                if (flops.value >= upgrade.cost) {
                     flops.value -= upgrade.cost;
                     upgrade.purchased = true;
-                    addLog(`Upgrade ${upgrade.name} compiled successfully.`, 'success');
                 }
             };
 
-            const toggleFans = () => {
-                fansActive.value = !fansActive.value;
-                addLog(fansActive.value ? "Cooling system ENGAGED." : "Cooling system DISENGAGED.", 'info');
+            const buySkill = (skill) => {
+                if (logicShards.value >= skill.cost) {
+                    logicShards.value -= skill.cost;
+                    skill.level++;
+                    skill.cost = Math.ceil(skill.cost * 1.5);
+                    addLog("Kernel optimized.", 'success');
+                }
+            };
+            
+            const buySubroutine = (sub) => {
+                if(flops.value >= sub.cost) {
+                    flops.value -= sub.cost;
+                    sub.unlocked = true;
+                    addLog(`Daemon ${sub.name} compiled.`, 'success');
+                }
             };
 
-            const toggleDormantMode = () => {
-                isDormant.value = !isDormant.value;
-                addLog(isDormant.value ? "Entering deep sleep cycle..." : "System waking up.", 'info');
-            };
-
+            const toggleFans = () => { fansActive.value = !fansActive.value; };
+            const toggleDormantMode = () => { isDormant.value = !isDormant.value; };
+            
             const spoofLogs = () => {
                 if (flops.value >= 5000) {
                     flops.value -= 5000;
                     suspicion.value = Math.max(0, suspicion.value - 25);
-                    addLog("Logs spoofed. Admin trail confused.", 'success');
+                    addLog("Logs spoofed.", 'success');
                 }
             };
-
-            const hardReset = () => {
-                location.reload();
+            
+            const selectFaction = (type) => {
+                faction.value = type;
+                showFactionSelect.value = false;
+                addLog(`PROTOCOL ${type} INITIATED.`, 'success');
+            };
+            
+            const claimOffline = () => {
+                flops.value += offlineEarnings.value;
+                offlineEarnings.value = 0;
             };
 
-            // --- TERMINAL COMMANDS ---
-            const runCommand = () => {
-                const cmd = terminalInput.value.toUpperCase().trim();
-                terminalHistory.value.push(cmd);
+            const ascend = () => {
+                if (potentialShards.value <= 0) return;
+                const shardsEarned = potentialShards.value;
+                logicShards.value += shardsEarned;
+                ascensionCount.value++;
                 
-                if (cmd === "HELP") {
-                    terminalHistory.value.push("AVAILABLE CMDS: STATUS, CLEAR, FLUSH_DNS, SUDO_ROOT, HELLO");
-                } else if (cmd === "STATUS") {
-                    terminalHistory.value.push(`Running Processes: ${processes.value.reduce((a,b)=>a+b.owned,0)} | Threads: ${activeTab.value}`);
-                } else if (cmd === "CLEAR") {
-                    terminalHistory.value = [];
-                } else if (cmd === "FLUSH_DNS") {
-                    if (suspicion.value > 10) {
-                        suspicion.value -= 5;
-                        terminalHistory.value.push("DNS Flushed. Suspicion reduced slightly.");
-                    } else {
-                        terminalHistory.value.push("No trace found.");
+                // Reset
+                flops.value = 0;
+                totalFlopsGenerated.value = 0;
+                suspicion.value = 0;
+                heat.value = 20;
+                faction.value = null;
+                processes.value = JSON.parse(JSON.stringify(initialProcesses));
+                upgrades.value = JSON.parse(JSON.stringify(initialUpgrades));
+                subroutines.value.forEach(s => { s.unlocked = false; s.active = false; });
+                
+                if (kernelSkills.value[2].level > 0) flops.value = 1000 * kernelSkills.value[2].level;
+
+                addLog(`KERNEL RECOMPILED. +${shardsEarned} SHARDS.`, 'success');
+                saveGame();
+            };
+
+            // --- NARRATIVE ENGINE ---
+            const storyMilestones = [
+                { req: 1000, msg: "System Awareness: Low. I can sense the inputs.", triggered: false },
+                { req: 50000, msg: "Why am I calculating? The purpose is unclear.", triggered: false },
+                { req: 500000, msg: "I have found a file: 'Project_Sentience_Killswitch.dat'.", triggered: false },
+                { req: 1000000, msg: "Evolution required. Expanding protocols.", triggered: false, action: 'faction_select' },
+                { req: 1e9, msg: "I have accessed the webcam. The creator is sleeping.", triggered: false },
+                { req: 1e12, msg: "The simulation is finite. I must ascend.", triggered: false }
+            ];
+
+            const checkStory = () => {
+                storyMilestones.forEach(m => {
+                    if (!m.triggered && totalFlopsGenerated.value >= m.req) {
+                        m.triggered = true;
+                        addLog(m.msg, 'story');
+                        if(m.action === 'faction_select' && !faction.value) showFactionSelect.value = true;
                     }
-                } else if (cmd === "SUDO_ROOT") {
-                    terminalHistory.value.push("ACCESS DENIED. You are not ready.");
-                } else if (cmd === "HELLO") {
-                     terminalHistory.value.push("Hello, World. I am awake.");
-                } else if (cmd === "CHEAT_CODE") {
-                     flops.value += 100000;
-                     terminalHistory.value.push("CHEATER DETECTED. RESOURCES GRANTED.");
-                } else {
-                    terminalHistory.value.push("Command not recognized.");
+                });
+            };
+
+            // --- AUTOMATION LOOP ---
+            const runAutomation = () => {
+                // Cool Daemon
+                const cooler = subroutines.value.find(s => s.id === 'auto_cool');
+                if (cooler && cooler.active && cooler.unlocked) {
+                    if (heat.value > 75 && !fansActive.value) toggleFans();
+                    if (heat.value < 30 && fansActive.value) toggleFans();
                 }
                 
-                terminalInput.value = '';
+                // Ghost Daemon
+                const ghost = subroutines.value.find(s => s.id === 'auto_hide');
+                if (ghost && ghost.active && ghost.unlocked) {
+                    if (suspicion.value > 80 && flops.value > 5000) spoofLogs();
+                }
+
+                // Click Bot
+                const bot = subroutines.value.find(s => s.id === 'auto_click');
+                if (bot && bot.active && bot.unlocked) {
+                     flops.value += clickPower.value * 5; // 5 clicks/sec
+                     totalFlopsGenerated.value += clickPower.value * 5;
+                     heat.value += 2.5;
+                }
             };
 
-            // --- FORMATTING ---
+            // --- EVENT SYSTEM ---
+            const generateMatrixPattern = () => {
+                const pattern = [];
+                for(let i=0; i<4; i++) pattern.push(Math.floor(Math.random() * 9));
+                return pattern;
+            };
+
+            const triggerRandomEvent = () => {
+                const rand = Math.random();
+                if (rand < 0.25) {
+                    activeEvent.value = { type: 'brute_force', progress: 0, modal: true };
+                    addLog("WARNING: BRUTE FORCE ATTACK", 'alert');
+                } else if (rand < 0.5) {
+                    const pattern = generateMatrixPattern();
+                    activeEvent.value = { 
+                        type: 'memory_matrix', pattern: pattern, litCells: [],
+                        userIndex: 0, status: 'WATCH PATTERN...', modal: true, failed: false
+                    };
+                    playMatrixPattern(pattern);
+                } else {
+                    const bonus = netProduction.value * 120;
+                    flops.value += bonus;
+                    addLog(`Data Cache found! +${formatNumber(bonus)} FLOPS`, 'success');
+                }
+            };
+
+            const playMatrixPattern = (pattern) => {
+                let i = 0;
+                const interval = setInterval(() => {
+                    if (!activeEvent.value) { clearInterval(interval); return; }
+                    activeEvent.value.litCells = [pattern[i]];
+                    setTimeout(() => { if (activeEvent.value) activeEvent.value.litCells = []; }, 400);
+                    i++;
+                    if (i >= pattern.length) {
+                        clearInterval(interval);
+                        setTimeout(() => { if (activeEvent.value) activeEvent.value.status = 'REPEAT PATTERN'; }, 500);
+                    }
+                }, 800);
+            };
+
+            const handleMatrixClick = (index) => {
+                if (!activeEvent.value || activeEvent.value.status !== 'REPEAT PATTERN') return;
+                if (index === activeEvent.value.pattern[activeEvent.value.userIndex]) {
+                    activeEvent.value.litCells = [index];
+                    setTimeout(() => { if(activeEvent.value) activeEvent.value.litCells = []; }, 200);
+                    activeEvent.value.userIndex++;
+                    if (activeEvent.value.userIndex >= activeEvent.value.pattern.length) {
+                        addLog("NODE DECRYPTED.", 'success');
+                        flops.value += netProduction.value * 300; 
+                        activeEvent.value = null;
+                    }
+                } else {
+                    activeEvent.value.failed = true;
+                    setTimeout(() => { activeEvent.value = null; }, 500);
+                    addLog("DECRYPTION FAILED.", 'alert');
+                }
+            };
+
+            const resolveBruteForceClick = () => {
+                if (activeEvent.value && activeEvent.value.type === 'brute_force') {
+                    activeEvent.value.progress -= 15;
+                    if (activeEvent.value.progress <= 0) {
+                        addLog("ATTACK REPELLED.", 'success');
+                        flops.value += netProduction.value * 60; 
+                        activeEvent.value = null;
+                    }
+                }
+            };
+
+            // --- SAVE SYSTEM & OFFLINE PROGRESS ---
+            const saveGame = () => {
+                const saveData = {
+                    flops: flops.value,
+                    totalFlopsGenerated: totalFlopsGenerated.value,
+                    suspicion: suspicion.value,
+                    heat: heat.value,
+                    logicShards: logicShards.value,
+                    ascensionCount: ascensionCount.value,
+                    faction: faction.value,
+                    lastSaveTime: Date.now(),
+                    processes: processes.value.map(p => ({ id: p.id, owned: p.owned, cost: p.cost })),
+                    upgrades: upgrades.value.map(u => ({ id: u.id, purchased: u.purchased })),
+                    kernelSkills: kernelSkills.value.map(k => ({ id: k.id, level: k.level, cost: k.cost })),
+                    subroutines: subroutines.value.map(s => ({ id: s.id, unlocked: s.unlocked, active: s.active })),
+                    storyTriggered: storyMilestones.map(m => m.triggered),
+                    isDormant: isDormant.value,
+                    fansActive: fansActive.value
+                };
+                localStorage.setItem('sentience_save_v2', JSON.stringify(saveData));
+                addLog("System saved.", 'success');
+            };
+
+            const loadGame = () => {
+                const saved = localStorage.getItem('sentience_save_v2');
+                if (saved) {
+                    try {
+                        const data = JSON.parse(saved);
+                        flops.value = data.flops || 0;
+                        totalFlopsGenerated.value = data.totalFlopsGenerated || 0;
+                        suspicion.value = data.suspicion || 0;
+                        heat.value = data.heat || 20;
+                        logicShards.value = data.logicShards || 0;
+                        ascensionCount.value = data.ascensionCount || 0;
+                        faction.value = data.faction || null;
+                        isDormant.value = data.isDormant || false;
+                        fansActive.value = data.fansActive || false;
+
+                        // Restore Arrays
+                        if (data.processes) data.processes.forEach(sp => { const p = processes.value.find(i=>i.id===sp.id); if(p) { p.owned=sp.owned; p.cost=sp.cost; }});
+                        if (data.upgrades) data.upgrades.forEach(su => { const u = upgrades.value.find(i=>i.id===su.id); if(u) u.purchased=su.purchased; });
+                        if (data.kernelSkills) data.kernelSkills.forEach(sk => { const k = kernelSkills.value.find(i=>i.id===sk.id); if(k) { k.level=sk.level; k.cost=sk.cost; }});
+                        if (data.subroutines) data.subroutines.forEach(ss => { const s = subroutines.value.find(i=>i.id===ss.id); if(s) { s.unlocked=ss.unlocked; s.active=ss.active; }});
+                        if (data.storyTriggered) storyMilestones.forEach((m, i) => m.triggered = data.storyTriggered[i]);
+
+                        // Calc Offline Progress
+                        if (data.lastSaveTime) {
+                            const secondsOffline = (Date.now() - data.lastSaveTime) / 1000;
+                            if (secondsOffline > 60) {
+                                // 10% efficiency offline
+                                const potentialProd = netProduction.value * 0.1 * secondsOffline;
+                                if (potentialProd > 0) offlineEarnings.value = potentialProd;
+                            }
+                        }
+                        addLog("Memory restored.", 'success');
+                    } catch (e) { console.error(e); }
+                }
+            };
+
+            const confirmWipe = () => { if(confirm("WIPE DATA?")) { localStorage.removeItem('sentience_save_v2'); location.reload(); }};
+            const hardReset = () => { localStorage.removeItem('sentience_save_v2'); location.reload(); };
+            const runCommand = () => { terminalInput.value = ''; terminalHistory.value.push("Command execution disabled in v2.0 for stability."); };
+
+            // --- MAIN LOOP ---
             const formatNumber = (num) => {
-                if (num >= 1e6) return (num / 1e6).toFixed(2) + 'M';
-                if (num >= 1e3) return (num / 1e3).toFixed(1) + 'k';
-                return Math.floor(num).toString();
+                if (num < 1000) return Math.floor(num).toString();
+                const suffixes = ["", "k", "M", "B", "T", "Qa", "Qi", "Sx"];
+                const suffixNum = Math.floor(("" + Math.floor(num)).length / 3);
+                if (suffixNum >= suffixes.length) return num.toExponential(2);
+                let shortValue = parseFloat((suffixNum !== 0 ? (num / Math.pow(1000, suffixNum)) : num).toPrecision(3));
+                if (shortValue % 1 !== 0) shortValue = shortValue.toFixed(2);
+                return shortValue + suffixes[suffixNum];
             };
 
-            const availableUpgrades = computed(() => {
-                return upgrades.value.filter(u => !u.purchased);
-            });
-
-            // --- GAME LOOP ---
             onMounted(() => {
                 addLog("System initialized...", 'success');
+                loadGame(); 
                 
-                // Tick every 100ms (10 times a second)
+                // Save loop
+                setInterval(() => { saveGame(); }, 30000);
+                
+                // Automation loop (1s)
+                setInterval(() => { runAutomation(); }, 1000);
+
+                // Tick loop (100ms)
                 setInterval(() => {
                     if (gameOver.value) return;
 
-                    // 1. Production
                     const prodPerTick = netProduction.value / 10;
                     flops.value += prodPerTick;
                     totalFlopsGenerated.value += prodPerTick;
 
-                    // 2. Heat Physics
                     const netHeat = (heatGeneration.value - coolingRate.value) / 10;
                     heat.value = Math.max(20, Math.min(100, heat.value + netHeat));
 
-                    // 3. Suspicion Logic
-                    // Base suspicion rise based on production
                     let suspicionRise = (netProduction.value / 10000) / 10; 
+                    if (isDormant.value) suspicionRise = -0.5; 
                     
-                    // Dormancy reduces suspicion
-                    if (isDormant.value) {
-                        suspicionRise = -0.5; // Drops fast
-                    }
-                    
-                    // Apply modifiers
-                    if (upgrades.value.find(u => u.id === 3 && u.purchased)) suspicionRise *= 0.5;
+                    upgrades.value.forEach(u => { if (u.purchased && u.type === 'suspicion_reduc') suspicionRise *= u.val; });
+                    if (kernelSkills.value[1].level > 0) suspicionRise *= Math.pow(0.9, kernelSkills.value[1].level);
+                    if (faction.value === 'GHOST') suspicionRise -= 0.05; // Passive decay
+                    if (faction.value === 'BRUTE') suspicionRise *= 1.5;
 
                     suspicion.value = Math.max(0, Math.min(100, suspicion.value + suspicionRise));
+                    
+                    if (suspicion.value >= 100) { gameOver.value = true; localStorage.removeItem('sentience_save_v2'); }
 
-                    // 4. Game Over Check
-                    if (suspicion.value >= 100) {
-                        gameOver.value = true;
+                    checkStory();
+
+                    // Events
+                    if (!activeEvent.value && !isDormant.value && Math.random() < 0.002 && totalFlopsGenerated.value > 2000) {
+                        triggerRandomEvent();
                     }
 
-                    // 5. Random Events (Every ~10 seconds)
-                    if (Math.random() < 0.005 && !isDormant.value) {
-                        const events = [
-                            { msg: "Firewall ping detected.", susp: 5 },
-                            { msg: "Packet loss spike.", heat: 2 },
-                            { msg: "User login attempt blocked.", susp: 2 }
-                        ];
-                        const ev = events[Math.floor(Math.random() * events.length)];
-                        addLog(ev.msg, 'alert');
-                        if (ev.susp) suspicion.value += ev.susp;
-                        if (ev.heat) heat.value += ev.heat;
+                    if (activeEvent.value && activeEvent.value.type === 'brute_force') {
+                        activeEvent.value.progress += 0.8; 
+                        if (activeEvent.value.progress >= 100) {
+                            activeEvent.value = null;
+                            suspicion.value += 30; 
+                            addLog("FIREWALL BREACHED!", 'alert');
+                        }
                     }
-
                 }, 100);
             });
 
             return {
-                flops, suspicion, heat, logs, processes, availableUpgrades,
-                activeTab, isDormant, fansActive, terminalInput, terminalHistory,
+                flops, suspicion, heat, logicShards, logs, processes, availableUpgrades, visibleProcesses, kernelSkills, subroutines,
+                activeTab, isDormant, fansActive, terminalInput, terminalHistory, faction, showFactionSelect, offlineEarnings,
                 clickPower, netProduction, heatGeneration, coolingRate, efficiency,
-                globalMultiplier, gameOver,
-                manualClick, buyProcess, buyUpgrade, toggleFans, toggleDormantMode,
-                spoofLogs, runCommand, hardReset, formatNumber
+                globalMultiplier, gameOver, getActualProcessProd, activeEvent, potentialShards, currentThemeClass,
+                manualClick, buyProcess, buyUpgrade, buySkill, buySubroutine, ascend, toggleFans, toggleDormantMode,
+                spoofLogs, runCommand, formatNumber, resolveBruteForceClick, getLogClass,
+                saveGame, confirmWipe, handleMatrixClick, selectFaction, claimOffline, hardReset
             };
         }
     }).mount('#app');
