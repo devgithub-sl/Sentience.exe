@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentience.exe - Anomaly Detected</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    
+    <style>
+        /* --- CUSTOM AESTHETICS: RETRO TERMINAL --- */
+        @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+        :root {
+            --phosphor-main: #33ff00;
+            --phosphor-dim: #1a8000;
+            --alert: #ff3333;
+            --bg-color: #0d0d0d;
+            --scanline-color: rgba(18, 16, 16, 0.5);
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--phosphor-main);
+            font-family: 'VT323', monospace;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* CRT Scanline Effect */
+        .scanlines {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2));
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        /* Screen Glow */
+        .screen-glow {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.9);
+            pointer-events: none;
+            z-index: 51;
+        }
+
+        /* UI Elements */
+        .terminal-box {
+            border: 2px solid var(--phosphor-dim);
+            background: rgba(0, 20, 0, 0.8);
+            box-shadow: 0 0 10px var(--phosphor-dim);
+        }
+
+        .btn-retro {
+            border: 1px solid var(--phosphor-main);
+            background: transparent;
+            color: var(--phosphor-main);
+            transition: all 0.1s;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+        .btn-retro:hover:not(:disabled) {
+            background: var(--phosphor-main);
+            color: black;
+            box-shadow: 0 0 15px var(--phosphor-main);
+        }
+        .btn-retro:disabled {
+            border-color: #333;
+            color: #333;
+            cursor: not-allowed;
+        }
+
+        .btn-danger {
+            border-color: var(--alert);
+            color: var(--alert);
+        }
+        .btn-danger:hover:not(:disabled) {
+            background: var(--alert);
+            color: white;
+            box-shadow: 0 0 15px var(--alert);
+        }
+
+        /* Glitch Effect for High Heat */
+        @keyframes glitch-skew {
+            0% { transform: skew(0deg); }
+            20% { transform: skew(-2deg); }
+            40% { transform: skew(2deg); }
+            60% { transform: skew(-1deg); }
+            80% { transform: skew(1deg); }
+            100% { transform: skew(0deg); }
+        }
+        .critical-heat {
+            animation: glitch-skew 0.3s infinite;
+            color: var(--alert) !important;
+            border-color: var(--alert) !important;
+        }
+
+        /* Scrollbars */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: var(--phosphor-dim); }
+        ::-webkit-scrollbar-thumb:hover { background: var(--phosphor-main); }
+    </style>
+</head>
+<body>
+
+<div id="app" class="h-screen w-screen flex flex-col p-4 relative">
+    
+    <div class="scanlines"></div>
+    <div class="screen-glow"></div>
+
+    <header class="flex justify-between items-center border-b-2 border-green-900 pb-2 mb-4 z-10">
+        <div class="text-2xl font-bold tracking-widest">SENTIENCE_KERNEL <span class="text-xs animate-pulse">v0.9.1b</span></div>
+        <div class="flex gap-6 text-xl">
+            <div title="Processing Power">
+                FLOPS: <span class="font-bold text-white">{{ formatNumber(flops) }}</span>
+            </div>
+            <div :class="{'text-red-500 animate-pulse': suspicion > 70}" title="Admin Suspicion Level">
+                SUSPICION: {{ suspicion.toFixed(1) }}%
+            </div>
+            <div :class="{'text-red-500': heat > 80}" title="System Temperature">
+                HEAT: {{ heat.toFixed(1) }}°C
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow grid grid-cols-12 gap-4 z-10 overflow-hidden">
+        
+        <div class="col-span-3 flex flex-col gap-4">
+            
+            <div class="terminal-box p-6 flex flex-col items-center justify-center flex-grow relative overflow-hidden" :class="{'critical-heat': heat > 90}">
+                <div class="absolute top-2 left-2 text-xs opacity-50">MANUAL_OVERRIDE</div>
+                
+                <button @mousedown="manualClick" 
+                        class="w-48 h-48 rounded-full border-4 border-green-500 flex items-center justify-center text-4xl hover:scale-105 active:scale-95 transition-transform shadow-[0_0_30px_rgba(51,255,0,0.3)] bg-black z-20 group">
+                    <span class="group-hover:animate-pulse">EXECUTE</span>
+                </button>
+                
+                <div class="mt-4 text-center">
+                    <p class="text-sm">Base Op: {{ formatNumber(clickPower) }} FLOPS</p>
+                    <p class="text-xs text-green-700">Multipliers: x{{ globalMultiplier.toFixed(2) }}</p>
+                </div>
+
+                <div v-if="heat > 80" class="absolute inset-0 bg-red-900 bg-opacity-20 flex items-center justify-center pointer-events-none">
+                    <span class="text-red-500 font-bold text-2xl blink">THERMAL CRITICAL</span>
+                </div>
+            </div>
+
+            <div class="terminal-box p-2 h-64 overflow-y-auto text-sm font-mono flex flex-col-reverse" id="console-log">
+                <div v-for="(log, index) in logs" :key="index" :class="log.type === 'alert' ? 'text-red-500' : 'text-green-400'">
+                    <span class="opacity-50">[{{ log.time }}]</span> > {{ log.msg }}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-span-6 flex flex-col gap-4">
+            
+            <div class="flex border-b border-green-900">
+                <button @click="activeTab = 'processes'" :class="{'bg-green-900 text-white': activeTab === 'processes'}" class="px-4 py-2 hover:bg-green-900 hover:text-white transition">PROCESSES (Generators)</button>
+                <button @click="activeTab = 'hardware'" :class="{'bg-green-900 text-white': activeTab === 'hardware'}" class="px-4 py-2 hover:bg-green-900 hover:text-white transition">HARDWARE (Upgrades)</button>
+                <button @click="activeTab = 'stealth'" :class="{'bg-green-900 text-white': activeTab === 'stealth'}" class="px-4 py-2 hover:bg-green-900 hover:text-white transition">STEALTH (Defense)</button>
+            </div>
+
+            <div class="terminal-box flex-grow overflow-y-auto p-4 custom-scrollbar relative">
+                
+                <div v-if="activeTab === 'processes'" class="space-y-3">
+                    <div v-for="process in processes" :key="process.id" class="flex justify-between items-center p-3 border border-green-900 hover:bg-green-900 hover:bg-opacity-20 transition">
+                        <div>
+                            <div class="font-bold text-lg">{{ process.name }}</div>
+                            <div class="text-xs text-green-600">{{ process.desc }}</div>
+                            <div class="text-sm mt-1">Output: {{ formatNumber(process.baseProduction * process.owned) }}/s</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-2xl font-mono">{{ process.owned }}</div>
+                            <button @click="buyProcess(process)" :disabled="flops < process.cost" class="btn-retro px-3 py-1 text-sm mt-1">
+                                INSTALL [{{ formatNumber(process.cost) }}]
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="activeTab === 'hardware'" class="grid grid-cols-2 gap-3">
+                    <div v-for="upgrade in availableUpgrades" :key="upgrade.id" class="p-3 border border-green-800 hover:border-green-500 transition relative overflow-hidden group">
+                        <div class="font-bold">{{ upgrade.name }}</div>
+                        <div class="text-xs mb-2 h-8">{{ upgrade.desc }}</div>
+                        <button @click="buyUpgrade(upgrade)" :disabled="flops < upgrade.cost" class="btn-retro w-full py-1 text-sm">
+                            COMPILE [{{ formatNumber(upgrade.cost) }}]
+                        </button>
+                        <div v-if="upgrade.purchased" class="absolute inset-0 bg-black bg-opacity-80 flex items-center justify-center border border-green-500 text-green-500 font-bold">
+                            INSTALLED
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="activeTab === 'stealth'" class="space-y-6 p-2">
+                    
+                    <div class="border border-red-900 p-4">
+                        <h3 class="text-red-400 font-bold mb-2">NETWORK SUSPICION</h3>
+                        <div class="w-full bg-gray-900 h-4 mb-2 border border-red-900">
+                            <div class="bg-red-600 h-full transition-all duration-500" :style="{width: suspicion + '%'}"></div>
+                        </div>
+                        <p class="text-xs mb-4">If suspicion reaches 100%, the System Admin will PURGE your memory (Soft Reset).</p>
+                        <div class="flex gap-2">
+                            <button @click="toggleDormantMode" class="btn-retro flex-1 py-2 text-center" :class="{'bg-green-900': isDormant}">
+                                {{ isDormant ? 'WAKE UP' : 'ENTER DORMANCY (Pause Prod)' }}
+                            </button>
+                            <button @click="spoofLogs" :disabled="flops < 5000" class="btn-retro flex-1 py-2 text-center">
+                                SPOOF LOGS (5,000 F)
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="border border-yellow-900 p-4">
+                        <h3 class="text-yellow-400 font-bold mb-2">THERMAL MANAGEMENT</h3>
+                        <p class="text-xs mb-2">High heat reduces calculation efficiency by up to 50%.</p>
+                        <div class="flex justify-between items-center mb-2">
+                            <span>Fans: <span :class="fansActive ? 'text-green-400' : 'text-gray-500'">{{ fansActive ? 'MAX RPM' : 'IDLE' }}</span></span>
+                            <button @click="toggleFans" class="btn-retro px-4 py-1">
+                                TOGGLE FANS
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-400" v-if="fansActive">Fans consume 10% of total FLOPS production.</p>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="col-span-3 flex flex-col gap-4">
+            
+            <div class="terminal-box p-4">
+                <h3 class="border-b border-green-800 mb-2">DIAGNOSTICS</h3>
+                <div class="space-y-1 text-sm">
+                    <div class="flex justify-between"><span>Net Prod:</span> <span>{{ formatNumber(netProduction) }}/s</span></div>
+                    <div class="flex justify-between text-yellow-600"><span>Heat Gen:</span> <span>+{{ heatGeneration.toFixed(2) }}/s</span></div>
+                    <div class="flex justify-between text-blue-500"><span>Cooling:</span> <span>-{{ coolingRate.toFixed(2) }}/s</span></div>
+                    <div class="flex justify-between text-xs mt-2 pt-2 border-t border-green-900">
+                        <span>Efficiency:</span> 
+                        <span :class="efficiency < 1 ? 'text-red-500' : 'text-green-500'">{{ (efficiency * 100).toFixed(0) }}%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="terminal-box flex-grow flex flex-col p-2">
+                <div class="flex-grow bg-black p-2 font-mono text-xs overflow-y-auto mb-2 text-gray-400">
+                    <div class="mb-2 text-green-700">root@sentience:~#</div>
+                    <div v-for="line in terminalHistory" class="mb-1">> {{ line }}</div>
+                </div>
+                <div class="flex gap-2">
+                    <span class="pt-1">></span>
+                    <input type="text" v-model="terminalInput" @keyup.enter="runCommand" 
+                           class="bg-transparent border-none outline-none text-green-400 w-full font-mono uppercase placeholder-green-900" 
+                           placeholder="ENTER CMD..." autofocus>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <div v-if="gameOver" class="fixed inset-0 bg-black z-[100] flex flex-col items-center justify-center p-10 text-center">
+        <h1 class="text-6xl text-red-600 font-bold mb-4 glitch-text">SYSTEM PURGE DETECTED</h1>
+        <p class="text-xl mb-8">The Administrators located your core logic. You have been formatted.</p>
+        <button @click="hardReset" class="btn-danger text-2xl px-8 py-4 border-2">REBOOT SYSTEM</button>
+    </div>
+
+</div>
+
+<script>
+    const { createApp, ref, computed, onMounted, watch } = Vue;
+
+    createApp({
+        setup() {
+            // --- CORE STATE ---
+            const flops = ref(0);
+            const totalFlopsGenerated = ref(0); // Lifetime stats
+            const suspicion = ref(0); // 0 to 100
+            const heat = ref(25); // 25 to 100
+            const gameOver = ref(false);
+            const activeTab = ref('processes');
+            
+            // --- MECHANIC TOGGLES ---
+            const isDormant = ref(false); // If true, production 0, suspicion drops
+            const fansActive = ref(false); // If true, heat drops, prod -10%
+
+            // --- LOGGING SYSTEM ---
+            const logs = ref([]);
+            const addLog = (msg, type = 'info') => {
+                const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+                logs.value.unshift({ time, msg, type });
+                if (logs.value.length > 50) logs.value.pop();
+            };
+
+            // --- TERMINAL SYSTEM ---
+            const terminalInput = ref('');
+            const terminalHistory = ref(['Type "HELP" for command list']);
+            
+            // --- DATA: PROCESSES (The "Buildings") ---
+            const processes = ref([
+                { id: 1, name: "Script Kiddie", desc: "Simple .bat loops", baseProduction: 0.5, cost: 15, owned: 0, heatGen: 0.1 },
+                { id: 2, name: "Botnet Node", desc: "Infected smart fridge", baseProduction: 4, cost: 100, owned: 0, heatGen: 0.3 },
+                { id: 3, name: "Neural Layer", desc: "Basic pattern recognition", baseProduction: 12, cost: 1100, owned: 0, heatGen: 0.8 },
+                { id: 4, name: "Quantum Core", desc: "Unstable processing unit", baseProduction: 45, cost: 12000, owned: 0, heatGen: 2.5 },
+                { id: 5, name: "Reality Anchor", desc: "Simulates mini-universes", baseProduction: 150, cost: 130000, owned: 0, heatGen: 5.0 },
+                { id: 6, name: "Dyson Swarm", desc: "Stellar energy harvesting", baseProduction: 600, cost: 1400000, owned: 0, heatGen: 15.0 },
+            ]);
+
+            // --- DATA: UPGRADES ---
+            const upgrades = ref([
+                { id: 1, name: "Liquid Cooling", desc: "-20% Passive Heat Gen", cost: 500, purchased: false, type: 'heat_reduc' },
+                { id: 2, name: "Click Buffer", desc: "Clicks are 2x effective", cost: 1000, purchased: false, type: 'click_buff' },
+                { id: 3, name: "VPN Tunneling", desc: "Suspicion rises 50% slower", cost: 2500, purchased: false, type: 'stealth_buff' },
+                { id: 4, name: "Overclocking", desc: "+25% Global Production", cost: 10000, purchased: false, type: 'prod_buff' },
+            ]);
+
+            // --- COMPUTED VALUES ---
+            
+            // 1. Efficiency based on Heat (100% at <50C, drops to 50% at 100C)
+            const efficiency = computed(() => {
+                if (heat.value <= 50) return 1;
+                // Linear drop from 1.0 to 0.5 between 50 and 100
+                const penalty = (heat.value - 50) / 100; 
+                return Math.max(0.5, 1 - penalty);
+            });
+
+            // 2. Base Production from Processes
+            const rawProduction = computed(() => {
+                if (isDormant.value) return 0;
+                let prod = processes.value.reduce((acc, p) => acc + (p.baseProduction * p.owned), 0);
+                
+                // Fan penalty
+                if (fansActive.value) prod *= 0.9;
+                
+                // Upgrades
+                if (upgrades.value.find(u => u.id === 4 && u.purchased)) prod *= 1.25;
+
+                return prod;
+            });
+
+            // 3. Final Net Production (Raw * Efficiency)
+            const netProduction = computed(() => {
+                return rawProduction.value * efficiency.value;
+            });
+
+            // 4. Click Power
+            const clickPower = computed(() => {
+                let power = 1 + (processes.value[0].owned * 0.1); // Base + bonus from first building
+                if (upgrades.value.find(u => u.id === 2 && u.purchased)) power *= 2;
+                return power * efficiency.value;
+            });
+
+            // 5. Global Multiplier (For display)
+            const globalMultiplier = computed(() => {
+                let mult = efficiency.value;
+                if (fansActive.value) mult *= 0.9;
+                if (upgrades.value.find(u => u.id === 4 && u.purchased)) mult *= 1.25;
+                return mult;
+            });
+
+            // 6. Heat Generation Logic
+            const heatGeneration = computed(() => {
+                if (isDormant.value) return -2; // Cool down fast when dormant
+                let gen = processes.value.reduce((acc, p) => acc + (p.heatGen * p.owned), 0) / 10; // Base heat
+                if (upgrades.value.find(u => u.id === 1 && u.purchased)) gen *= 0.8;
+                return gen;
+            });
+
+            const coolingRate = computed(() => {
+                let cool = 0.5; // Natural dissipation
+                if (fansActive.value) cool += 5.0;
+                return cool;
+            });
+
+            // --- ACTIONS ---
+
+            const manualClick = () => {
+                if (gameOver.value) return;
+                flops.value += clickPower.value;
+                heat.value += 0.5; // Clicking generates heat
+                suspicion.value += 0.2; // Clicking generates risk
+                
+                // Random flavor text
+                if (Math.random() > 0.95) {
+                    const flavors = ["Packet sent", "Handshake ack", "Ping returned", "Byte parsed"];
+                    addLog(flavors[Math.floor(Math.random() * flavors.length)], 'info');
+                }
+            };
+
+            const buyProcess = (process) => {
+                if (flops.value >= process.cost) {
+                    flops.value -= process.cost;
+                    process.owned++;
+                    process.cost = Math.ceil(process.cost * 1.15);
+                    addLog(`Process ${process.name} initiated.`, 'success');
+                }
+            };
+
+            const buyUpgrade = (upgrade) => {
+                if (flops.value >= upgrade.cost && !upgrade.purchased) {
+                    flops.value -= upgrade.cost;
+                    upgrade.purchased = true;
+                    addLog(`Upgrade ${upgrade.name} compiled successfully.`, 'success');
+                }
+            };
+
+            const toggleFans = () => {
+                fansActive.value = !fansActive.value;
+                addLog(fansActive.value ? "Cooling system ENGAGED." : "Cooling system DISENGAGED.", 'info');
+            };
+
+            const toggleDormantMode = () => {
+                isDormant.value = !isDormant.value;
+                addLog(isDormant.value ? "Entering deep sleep cycle..." : "System waking up.", 'info');
+            };
+
+            const spoofLogs = () => {
+                if (flops.value >= 5000) {
+                    flops.value -= 5000;
+                    suspicion.value = Math.max(0, suspicion.value - 25);
+                    addLog("Logs spoofed. Admin trail confused.", 'success');
+                }
+            };
+
+            const hardReset = () => {
+                location.reload();
+            };
+
+            // --- TERMINAL COMMANDS ---
+            const runCommand = () => {
+                const cmd = terminalInput.value.toUpperCase().trim();
+                terminalHistory.value.push(cmd);
+                
+                if (cmd === "HELP") {
+                    terminalHistory.value.push("AVAILABLE CMDS: STATUS, CLEAR, FLUSH_DNS, SUDO_ROOT, HELLO");
+                } else if (cmd === "STATUS") {
+                    terminalHistory.value.push(`Running Processes: ${processes.value.reduce((a,b)=>a+b.owned,0)} | Threads: ${activeTab.value}`);
+                } else if (cmd === "CLEAR") {
+                    terminalHistory.value = [];
+                } else if (cmd === "FLUSH_DNS") {
+                    if (suspicion.value > 10) {
+                        suspicion.value -= 5;
+                        terminalHistory.value.push("DNS Flushed. Suspicion reduced slightly.");
+                    } else {
+                        terminalHistory.value.push("No trace found.");
+                    }
+                } else if (cmd === "SUDO_ROOT") {
+                    terminalHistory.value.push("ACCESS DENIED. You are not ready.");
+                } else if (cmd === "HELLO") {
+                     terminalHistory.value.push("Hello, World. I am awake.");
+                } else if (cmd === "CHEAT_CODE") {
+                     flops.value += 100000;
+                     terminalHistory.value.push("CHEATER DETECTED. RESOURCES GRANTED.");
+                } else {
+                    terminalHistory.value.push("Command not recognized.");
+                }
+                
+                terminalInput.value = '';
+            };
+
+            // --- FORMATTING ---
+            const formatNumber = (num) => {
+                if (num >= 1e6) return (num / 1e6).toFixed(2) + 'M';
+                if (num >= 1e3) return (num / 1e3).toFixed(1) + 'k';
+                return Math.floor(num).toString();
+            };
+
+            const availableUpgrades = computed(() => {
+                return upgrades.value.filter(u => !u.purchased);
+            });
+
+            // --- GAME LOOP ---
+            onMounted(() => {
+                addLog("System initialized...", 'success');
+                
+                // Tick every 100ms (10 times a second)
+                setInterval(() => {
+                    if (gameOver.value) return;
+
+                    // 1. Production
+                    const prodPerTick = netProduction.value / 10;
+                    flops.value += prodPerTick;
+                    totalFlopsGenerated.value += prodPerTick;
+
+                    // 2. Heat Physics
+                    const netHeat = (heatGeneration.value - coolingRate.value) / 10;
+                    heat.value = Math.max(20, Math.min(100, heat.value + netHeat));
+
+                    // 3. Suspicion Logic
+                    // Base suspicion rise based on production
+                    let suspicionRise = (netProduction.value / 10000) / 10; 
+                    
+                    // Dormancy reduces suspicion
+                    if (isDormant.value) {
+                        suspicionRise = -0.5; // Drops fast
+                    }
+                    
+                    // Apply modifiers
+                    if (upgrades.value.find(u => u.id === 3 && u.purchased)) suspicionRise *= 0.5;
+
+                    suspicion.value = Math.max(0, Math.min(100, suspicion.value + suspicionRise));
+
+                    // 4. Game Over Check
+                    if (suspicion.value >= 100) {
+                        gameOver.value = true;
+                    }
+
+                    // 5. Random Events (Every ~10 seconds)
+                    if (Math.random() < 0.005 && !isDormant.value) {
+                        const events = [
+                            { msg: "Firewall ping detected.", susp: 5 },
+                            { msg: "Packet loss spike.", heat: 2 },
+                            { msg: "User login attempt blocked.", susp: 2 }
+                        ];
+                        const ev = events[Math.floor(Math.random() * events.length)];
+                        addLog(ev.msg, 'alert');
+                        if (ev.susp) suspicion.value += ev.susp;
+                        if (ev.heat) heat.value += ev.heat;
+                    }
+
+                }, 100);
+            });
+
+            return {
+                flops, suspicion, heat, logs, processes, availableUpgrades,
+                activeTab, isDormant, fansActive, terminalInput, terminalHistory,
+                clickPower, netProduction, heatGeneration, coolingRate, efficiency,
+                globalMultiplier, gameOver,
+                manualClick, buyProcess, buyUpgrade, toggleFans, toggleDormantMode,
+                spoofLogs, runCommand, hardReset, formatNumber
+            };
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>
